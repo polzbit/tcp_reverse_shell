@@ -12,7 +12,7 @@ make the victim execute them, and get the result back to us. <br/>
 
 ## Features
 
-*   <b>Navigation</b> - Navigate and list files throgh target file system.
+*   <b>Navigation</b> - Navigate and list files through target file system.
 *   <b>Shell Commands</b> - Execute shell commands on target system.
 *   <b>Download files</b> - Download files using `grab` command.
 
