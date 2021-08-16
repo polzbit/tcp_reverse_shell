@@ -19,7 +19,7 @@ make the victim execute them, and get the result back to us. <br/>
 *   <b>Search</b> - Search for files using `search` command.
 *   <b>Port Scanner</b> - check target for open ports using `scan` command.
 *   <b>Keylogger</b> - check target keylogs by downloading 'keylogs.txt' from target file system.
-*   <b>Encrypted Communication</b> - all commuinication between target and server is encrypted using XOR key.
+*   <b>Encrypted Communication</b> - all commuinication between target and server is encrypted using AES algorithm using CTR mode.
 *   <b>Persistence</b> - script copy itself to target appdata folder, adding new registry key pointing to script location and waiting for server connection.
 
 ## Usage
