@@ -4,7 +4,7 @@
 
 a simple example for tcp reverse shell script. <br/>
 
-once the victim runs the client script, we're expecting to receive a reverse TCP connection on port 8080. <br/>
+once the victim runs the client script, we're expecting to receive an encrypted reverse TCP connection on port 8080. <br/>
 
 Then, after completing the TCP three-way handshake, we can send certain shell commands to the victim/target, <br/>
 
@@ -19,8 +19,18 @@ make the victim execute them, and get the result back to us. <br/>
 *   <b>Search</b> - Search for files using `search` command.
 *   <b>Port Scanner</b> - check target for open ports using `scan` command.
 *   <b>Keylogger</b> - check target keylogs by downloading 'keylogs.txt' from target file system.
-*   <b>Encrypted Communication</b> - all commuinication between target and server is encrypted using AES algorithm using CTR mode.
+*   <b>Hybrid Encryption</b> - all commuinication between target and server run through protected tunnel, the tunnel encrypted using AES symmetric algorithm with CTR mode and RSA asymmetric algorithm.
 *   <b>Persistence</b> - script copy itself to target appdata folder, adding new registry key pointing to script location and waiting for server connection.
+
+## Implementation
+
+Client holds its own private key, and the server will holds the target's public key. <br/>
+Once the TCP connection is started, the server will generate a random AES key and we will securely send this key to the target side.  <br/>
+the transfer is encrypted via encrypting the random AES key with a target's public key. <br/>
+At this point, both server and target machines have the same random generated AES keys which will be used for AES encryption. <br/>
+
+To generate RSA key pair, you can use `rsa_generator.py` script. <br/>
+run the script and it will generate `private.pem` and `public.pem` files.
 
 ## Usage
 
