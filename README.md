@@ -30,7 +30,7 @@ the transfer is encrypted via encrypting the random AES key with a target's publ
 At this point, both server and target machines have the same random generated AES keys which will be used for AES encryption. <br/>
 
 To generate RSA key pair, you can use `rsa_generator.py` script. <br/>
-run the script and it will generate `private.pem` and `public.pem` files.
+run the script to generate `private.pem` and `public.pem` files.
 
 ## Usage
 
